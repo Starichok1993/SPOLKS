@@ -18,9 +18,9 @@ namespace TCP_Server_Csharp_
 
         public TCPServer(string hostNameOrAdress, int port, int qlength)
         {
-            queryLength = qlength; 
-            sListner = new TCPListner(hostNameOrAdress, port);
-            sThread = new Thread(new ThreadStart(ServerStart));
+            queryLength = qlength;
+            sListner = new TCPListner(hostNameOrAdress, port);      //инициализация прослушивателя
+            sThread = new Thread(new ThreadStart(ServerStart));     //запуск сервера в отдельном потоке
             sThread.Start();
         }
 
@@ -30,54 +30,74 @@ namespace TCP_Server_Csharp_
             sThread.Abort();
         }
 
-        private void ServerStart()
+        private void ServerStart()                      //метод-поток для обслуживания очереди подключений
         {
             Socket clientSocket;
 
-            Console.WriteLine("Echo server " + sListner.GetIpEndPoint());
-            
-            sListner.Start(queryLength);
+            Console.WriteLine("Server " + sListner.GetIpEndPoint());
+
+            sListner.Start(queryLength);               
+
             while (true)
             {
                 Console.WriteLine("Client number \n" + nclient);
-                clientSocket = sListner.AcceptSocket();
+                clientSocket = sListner.AcceptSocket();             //получаем сокет клиента
                 nclient++;
-                Thread clientThread = new Thread(ClientService);
+                Thread clientThread = new Thread(ClientService);    //запускаем отдельный поток для обслуживания клиента
                 clientThread.Start(clientSocket);
-            }           
+            }
         }
 
-        private void ClientService(object clientSocket)
+        private void ClientService(object clientSocket)             //метод-поток для обслуживания клиента
         {
-            Socket cSocket = (Socket) clientSocket;
+            Socket cSocket = (Socket)clientSocket;
             int bytesRec;
-            string data;
             string fileName = null;
-            byte[] bytes = new byte[1024];           
+            byte[] bytes = new byte[1024];
 
-            bytesRec = cSocket.Receive(bytes);
-            if (bytesRec != 0)
+            try
             {
-                fileName = Encoding.UTF8.GetString(bytes, 0, bytes.Length);
-                string name = fileName.Substring(0, fileName.IndexOf('\0'));
-                FileStream fs = new FileStream( name, FileMode.Append, FileAccess.Write);
-
-                cSocket.Send(BitConverter.GetBytes(fs.Position));
-
-                while ((bytesRec = cSocket.Receive(bytes)) != 0)
+                bytesRec = cSocket.Receive(bytes);              // 1) получаем от клиента имя файла
+                if (bytesRec != 0)
                 {
-                    byte[] msg = bytes.Take(bytesRec).ToArray();
-                    //cSocket.Send(bytes);
-                    Console.WriteLine(fs.Position);
-                    fs.Write(msg, 0, msg.Length);
-                }
-                fs.Close();
-            }
+                    FileStream fs = null;
+                    try
+                    {
+                        fileName = Encoding.UTF8.GetString(bytes, 0, bytesRec);         
+                        
+                        fs = new FileStream(fileName, FileMode.Append, FileAccess.Write);       
+                        cSocket.Send(BitConverter.GetBytes(fs.Position));                   //2) отправляем позицию в файле с которой нужно отправлять данные
 
-            
-            cSocket.Shutdown(SocketShutdown.Both);
-            cSocket.Close();
-            nclient--;
+                        while ((bytesRec = cSocket.Receive(bytes)) != 0)
+                        {
+                            byte[] msg = bytes.Take(bytesRec).ToArray();
+                            Console.WriteLine(fs.Position);
+                            fs.Write(msg, 0, msg.Length);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        throw ex;
+                    }
+                    finally
+                    {
+                        if (fs != null)
+                        {
+                            fs.Close();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error " + ex.Message);
+            }
+            finally
+            {
+                cSocket.Shutdown(SocketShutdown.Both);
+                cSocket.Close();
+                nclient--;
+            }
         }
     }
 }

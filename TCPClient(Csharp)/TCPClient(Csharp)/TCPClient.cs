@@ -33,32 +33,44 @@ namespace TCPClient_Csharp_
             Console.WriteLine("Upload start");
             int bytesRec;
             byte[] bytes = new byte[1024];
-            FileStream fs = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+            FileStream fs = null;
 
-            clientSocket.Connect(ipEndPoint);
-
-            clientSocket.Send(Encoding.UTF8.GetBytes(fileName));
-
-            bytesRec = clientSocket.Receive(bytes);
-
-            if (bytesRec != 0)
+            try
             {
-                long position = BitConverter.ToInt64(bytes, 0);
+                fs = new FileStream(fileName, FileMode.Open, FileAccess.Read);
 
-                Console.WriteLine("Start position" + position);
-                fs.Seek(position, SeekOrigin.Begin);
+                clientSocket.Connect(ipEndPoint);
 
-                while (clientSocket.Connected && fs.Position != fs.Length)
+                clientSocket.Send(Encoding.UTF8.GetBytes(fileName));
+
+                bytesRec = clientSocket.Receive(bytes);
+
+                if (bytesRec != 0)
                 {
-                    Console.WriteLine(fs.Position);
-                    int realRead = fs.Read(bytes, 0, bytes.Length);
-                    byte[] msg = new byte[realRead];
-                    msg = bytes.Take(realRead).ToArray();
-                    clientSocket.Send(msg);
-                }
+                    long position = BitConverter.ToInt64(bytes, 0);
 
+                    Console.WriteLine("Start position" + position);
+                    fs.Seek(position, SeekOrigin.Begin);
+
+                    while (clientSocket.Connected && fs.Position != fs.Length)
+                    {
+                        Console.WriteLine(fs.Position);
+                        int realRead = fs.Read(bytes, 0, bytes.Length);
+                        byte[] msg = new byte[realRead];
+                        msg = bytes.Take(realRead).ToArray();
+                        clientSocket.Send(msg);
+                    }
+
+                }
             }
-            fs.Close();
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            finally
+            {
+                fs.Close();
+            }
         }
 
 

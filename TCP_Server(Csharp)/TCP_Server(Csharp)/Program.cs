@@ -15,8 +15,7 @@ namespace TCP_Server_Csharp_
         {
 
             TCPServer serv = new TCPServer("192.168.11.25", 11000, 5);
-            
-
+ //           serv.Close();
 /*             // Устанавливаем для сокета локальную конечную точку
             IPHostEntry ipHost = Dns.GetHostEntry("localhost");
             IPAddress ipAddr = ipHost.AddressList[0];
