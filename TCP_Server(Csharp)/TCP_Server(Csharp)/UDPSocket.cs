@@ -8,40 +8,38 @@ using System.Threading.Tasks;
 
 namespace TCP_Server_Csharp_
 {
-    class TCPListner
+    class UDPSocket
     {
-        private Socket serverListner;
+        public Socket Socket;
         private IPEndPoint ipEndPoint;
 
-        public TCPListner(string hostNameOrAdress, int port)
+        public UDPSocket (string hostNameOrAdress, int port)
         {
             IPHostEntry ipHost = Dns.GetHostEntry(hostNameOrAdress);
             IPAddress ipAddr = ipHost.AddressList[2];
             ipEndPoint = new IPEndPoint(ipAddr, port);
-            serverListner = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            Socket = new Socket(ipAddr.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
         }
 
-        public void Start(int backlog)
+        public void Bind()
         {
-            serverListner.Bind(ipEndPoint);
-            serverListner.Listen(backlog);
+            Socket.Bind(ipEndPoint);
+            ipEndPoint = (IPEndPoint)Socket.LocalEndPoint;
         }
 
-        public Socket AcceptSocket()
+        public void Close()
         {
-            return serverListner.Accept();
+            Socket.Close();
         }
 
-        public void Stop()
+        public void SetReciveTimeOut(int timeOut)
         {
-            serverListner.Close();
+            Socket.ReceiveTimeout = timeOut;
         }
 
         public IPEndPoint GetIpEndPoint()
         {
             return ipEndPoint;
         }
-
-
     }
 }

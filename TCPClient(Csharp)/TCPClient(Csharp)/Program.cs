@@ -10,9 +10,19 @@ namespace TCPClient_Csharp_
     {
         static void Main(string[] args)
         {
-            TCPClient client = new TCPClient("192.168.11.25", 11000);
-            client.StartUpload("Puppy..mkv");
-            client.Close();
+            try
+            {
+                TCPClient client = new TCPClient();
+                client.Initialization("192.168.11.25", 12000, 1);
+                client.StartUploadUDP("Puppy..mkv");
+                //client.StartUpload("Puppy..mkv");
+                client.Close();
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            
         }
     }
 }

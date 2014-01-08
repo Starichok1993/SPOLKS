@@ -35,6 +35,12 @@ namespace TCP_Server_Csharp_
             cSocket = client;
         }
 
+        public void Connect(IPEndPoint remoteEP)
+        {
+            endPoint = remoteEP;
+  //          cSocket.Connect(endPoint);
+        }
+
         public int Read(byte[] buffer)
         {
             byte[] answer = new byte[1025];
@@ -55,10 +61,10 @@ namespace TCP_Server_Csharp_
                     {
                         cSocket.SendTo(Encoding.UTF8.GetBytes("ASK"), endPoint);
                         packageNumberRead++;
-                        answer.Skip(1).ToArray().CopyTo(buffer, 0);
+                        answer.Skip(1).ToArray().CopyTo(buffer,0);
                         return answerLength - 1;
                     }
-
+                    
                 }
                 catch (Exception ex)
                 {
@@ -74,17 +80,17 @@ namespace TCP_Server_Csharp_
             byte[] package = new byte[msg.Length + 1];
             package[0] = packageNumberWrite;
             msg.CopyTo(package, 1);
-
+            
             byte[] answer = new byte[1025];
             int answerLength = 0;
 
             for (int i = 0; i < 5; i++)
             {
                 try
-                {
-                    cSocket.SendTo(package, endPoint);
+                {                  
+                    cSocket.SendTo( package, endPoint);
                     answerLength = cSocket.ReceiveFrom(answer, ref endPoint);
-                    if (answerLength != 3 || Encoding.UTF8.GetString(answer, 0, 3) != "ASK")
+                    if (answerLength != 3 || Encoding.UTF8.GetString(answer, 0, 3) != "ASK" )
                     {
                         continue;
                     }
