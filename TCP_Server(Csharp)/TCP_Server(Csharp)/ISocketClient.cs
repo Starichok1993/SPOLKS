@@ -7,13 +7,11 @@ using System.Threading.Tasks;
 
 namespace TCP_Server_Csharp_
 {
-    interface ISocketClient
+    public interface ISocketClient
     {
-        private Socket cSocket;
-
-        public void Initialization(Socket client);
-        public int Read(byte[] buffer);
-        public int Write(byte[] msg);
-        public void Close();
+        void Initialization(Socket client);
+        int Read(byte[] buffer);
+        int Write(byte[] msg);
+        void Close();
     }
 }

@@ -42,62 +42,54 @@ namespace TCP_Server_Csharp_
             {
                 Console.WriteLine("Client number \n" + nclient);
                 clientSocket = sListner.AcceptSocket();             //получаем сокет клиента
+                TCPSocketClient socketClient = new TCPSocketClient();
+                socketClient.Initialization(clientSocket);
                 nclient++;
                 Thread clientThread = new Thread(ClientService);    //запускаем отдельный поток для обслуживания клиента
-                clientThread.Start(clientSocket);
+                clientThread.Start(socketClient);
             }
         }
 
         private void ClientService(object clientSocket)             //метод-поток для обслуживания клиента
         {
-            Socket cSocket = (Socket)clientSocket;
+            ISocketClient cSocket = (ISocketClient)clientSocket;
             int bytesRec;
             string fileName = null;
             byte[] bytes = new byte[1024];
 
-            try
+            bytesRec = cSocket.Read(bytes);              // 1) получаем от клиента имя файла
+            if (bytesRec != 0)
             {
-                bytesRec = cSocket.Receive(bytes);              // 1) получаем от клиента имя файла
-                if (bytesRec != 0)
+                FileStream fs = null;
+                fileName = Encoding.UTF8.GetString(bytes, 0, bytesRec);
+                try
                 {
-                    FileStream fs = null;
-                    try
-                    {
-                        fileName = Encoding.UTF8.GetString(bytes, 0, bytesRec);         
-                        
-                        fs = new FileStream(fileName, FileMode.Append, FileAccess.Write);       
-                        cSocket.Send(BitConverter.GetBytes(fs.Position));                   //2) отправляем позицию в файле с которой нужно отправлять данные
+                    fs = new FileStream(fileName, FileMode.Append, FileAccess.Write);
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    cSocket.Close();
+                    nclient--;                    
+                }
 
-                        while ((bytesRec = cSocket.Receive(bytes)) != 0)
-                        {
-                            byte[] msg = bytes.Take(bytesRec).ToArray();
-                            Console.WriteLine(fs.Position);
-                            fs.Write(msg, 0, msg.Length);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        throw ex;
-                    }
-                    finally
-                    {
-                        if (fs != null)
-                        {
-                            fs.Close();
-                        }
-                    }
+                cSocket.Write(BitConverter.GetBytes(fs.Position));                   //2) отправляем позицию в файле с которой нужно отправлять данные
+
+                while ((bytesRec = cSocket.Read(bytes)) != 0)
+                {
+                    byte[] msg = bytes.Take(bytesRec).ToArray();
+                    Console.WriteLine(fs.Position);
+                    fs.Write(msg, 0, msg.Length);
+                }
+
+                if (fs != null)
+                {
+                    fs.Close();
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error " + ex.Message);
-            }
-            finally
-            {
-                cSocket.Shutdown(SocketShutdown.Both);
-                cSocket.Close();
-                nclient--;
-            }
+                
+            cSocket.Close();                
+            nclient--;
         }
     }
 }
