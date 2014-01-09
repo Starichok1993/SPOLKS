@@ -13,8 +13,26 @@ namespace TCP_Server_Csharp_
     {
         static void Main(string[] args)
         {
+            Server serv = null;
+            try
+            {
+                serv = new Server(args[0], Int32.Parse(args[1]), Int32.Parse(args[2]), Int32.Parse(args[3])); // 1) ip, 2)port TCP, 3) tcp query length, 4) udp port
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return;
+            }
 
-            Server serv = new Server("192.168.11.25", 11000, 5, 12000);
+            while (true)
+            {
+                string command = Console.ReadLine();
+                if (command == "quit")
+                {
+                    serv.Close();
+                    return;
+                }
+            }
  //           serv.Close();
 /*             // Устанавливаем для сокета локальную конечную точку
             IPHostEntry ipHost = Dns.GetHostEntry("localhost");

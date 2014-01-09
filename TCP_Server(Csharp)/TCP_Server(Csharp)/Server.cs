@@ -77,7 +77,8 @@ namespace TCP_Server_Csharp_
                 {
                     bytesRec = udpSocket.Socket.ReceiveFrom(bytes, ref remoteEP);
                     //udpSocket.Socket.SendTo(Encoding.UTF8.GetBytes("ASK"), remoteEP);
-                    Console.WriteLine(Encoding.UTF8.GetString(bytes));
+                    //Console.WriteLine(Encoding.UTF8.GetString(bytes));
+                    Console.WriteLine("Remote EP: " + remoteEP);
                     Thread clientThread = new Thread(UDPClientService);    //запускаем отдельный поток для обслуживания клиента
                     clientThread.Start(remoteEP);
                 }
@@ -104,7 +105,8 @@ namespace TCP_Server_Csharp_
 
             UDPSocketClient client = new UDPSocketClient();
             client.Initialization(clientSocket.Socket);            
-            client.EndPoint = (IPEndPoint)targetEP;
+            client.RemoteEndPoint = (IPEndPoint)targetEP;
+
             //client.Write(Encoding.UTF8.GetBytes(client.EndPoint.ToString()));
             
             ClientService(client);
@@ -141,12 +143,13 @@ namespace TCP_Server_Csharp_
                 while ((bytesRec = cSocket.Read(bytes)) != 0)
                 {
                     byte[] msg = bytes.Take(bytesRec).ToArray();
-                    Console.WriteLine(fs.Position);
+ //                   Console.WriteLine(fs.Position);
                     fs.Write(msg, 0, msg.Length);
                 }
 
                 if (fs != null)
                 {
+                    Console.WriteLine("Finish position" + fs.Position);
                     fs.Close();
                 }
             }

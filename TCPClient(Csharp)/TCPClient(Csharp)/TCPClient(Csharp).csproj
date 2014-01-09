@@ -44,7 +44,7 @@
     <Compile Include="ISocketClient.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TCPClient.cs" />
+    <Compile Include="Client.cs" />
     <Compile Include="TCPSocketClient.cs" />
     <Compile Include="UDPSocketClient.cs" />
   </ItemGroup>

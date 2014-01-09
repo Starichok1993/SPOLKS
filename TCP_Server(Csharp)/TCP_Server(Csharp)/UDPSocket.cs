@@ -15,8 +15,7 @@ namespace TCP_Server_Csharp_
 
         public UDPSocket (string hostNameOrAdress, int port)
         {
-            IPHostEntry ipHost = Dns.GetHostEntry(hostNameOrAdress);
-            IPAddress ipAddr = ipHost.AddressList[2];
+            IPAddress ipAddr = Dns.Resolve(hostNameOrAdress).AddressList[0];
             ipEndPoint = new IPEndPoint(ipAddr, port);
             Socket = new Socket(ipAddr.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
         }

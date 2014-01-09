@@ -16,17 +16,17 @@ namespace TCP_Server_Csharp_
 
         private byte packageNumberRead = (byte)255;
 
-        private EndPoint endPoint;
+        private EndPoint remoteEndPoint;
 
-        public EndPoint EndPoint
+        public EndPoint RemoteEndPoint
         {
             get
             {
-                return endPoint;
+                return remoteEndPoint;
             }
             set
             {
-                endPoint = value;
+                remoteEndPoint = value;
             }
         }
 
@@ -37,9 +37,15 @@ namespace TCP_Server_Csharp_
 
         public void Connect(IPEndPoint remoteEP)
         {
-            endPoint = remoteEP;
-  //          cSocket.Connect(endPoint);
+            remoteEndPoint = remoteEP;
+//            cSocket.Connect(remoteEndPoint);
         }
+
+        public void ConnectUDP(IPEndPoint remoteEP)
+        {
+            cSocket.Connect(remoteEP);
+        }
+
 
         public int Read(byte[] buffer)
         {
@@ -50,16 +56,16 @@ namespace TCP_Server_Csharp_
             {
                 try
                 {
-                    answerLength = cSocket.ReceiveFrom(answer, ref endPoint);
+                    answerLength = cSocket.ReceiveFrom(answer, ref remoteEndPoint);
                     byte currentPackageNumber = answer[0];
                     if (currentPackageNumber == packageNumberRead)
                     {
-                        cSocket.SendTo(Encoding.UTF8.GetBytes("ASK"), endPoint);
+                        cSocket.SendTo(Encoding.UTF8.GetBytes("ASK"), remoteEndPoint);
                         continue;
                     }
                     if (currentPackageNumber != packageNumberRead)
                     {
-                        cSocket.SendTo(Encoding.UTF8.GetBytes("ASK"), endPoint);
+                        cSocket.SendTo(Encoding.UTF8.GetBytes("ASK"), remoteEndPoint);
                         packageNumberRead++;
                         answer.Skip(1).ToArray().CopyTo(buffer,0);
                         return answerLength - 1;
@@ -88,8 +94,8 @@ namespace TCP_Server_Csharp_
             {
                 try
                 {                  
-                    cSocket.SendTo( package, endPoint);
-                    answerLength = cSocket.ReceiveFrom(answer, ref endPoint);
+                    cSocket.SendTo( package, remoteEndPoint);
+                    answerLength = cSocket.ReceiveFrom(answer, ref remoteEndPoint);
                     if (answerLength != 3 || Encoding.UTF8.GetString(answer, 0, 3) != "ASK" )
                     {
                         continue;

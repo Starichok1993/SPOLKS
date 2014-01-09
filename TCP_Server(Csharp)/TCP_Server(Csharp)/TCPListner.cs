@@ -14,9 +14,8 @@ namespace TCP_Server_Csharp_
         private IPEndPoint ipEndPoint;
 
         public TCPListner(string hostNameOrAdress, int port)
-        {
-            IPHostEntry ipHost = Dns.GetHostEntry(hostNameOrAdress);
-            IPAddress ipAddr = ipHost.AddressList[2];
+        {            
+            IPAddress ipAddr = Dns.Resolve(hostNameOrAdress).AddressList[0];
             ipEndPoint = new IPEndPoint(ipAddr, port);
             serverListner = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         }
@@ -41,7 +40,6 @@ namespace TCP_Server_Csharp_
         {
             return ipEndPoint;
         }
-
 
     }
 }
