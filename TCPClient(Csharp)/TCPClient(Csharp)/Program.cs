@@ -12,11 +12,16 @@ namespace TCPClient_Csharp_
         {
             try
             {
-
                 Client client = new Client();
                 client.Initialization(args[0], Int32.Parse(args[1]), Int32.Parse(args[3]));
-                client.StartUploadUDP(args[2]);
-                //client.StartUpload("Puppy..mkv");
+                if (Int32.Parse(args[3]) != 0)
+                {
+                    client.StartUploadUDP(args[2]);
+                }
+                else
+                {
+                    client.StartUpload("Puppy..mkv");
+                }
                 client.Close();
             }
             catch(Exception ex)

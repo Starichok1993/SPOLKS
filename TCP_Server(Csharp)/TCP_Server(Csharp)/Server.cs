@@ -15,32 +15,84 @@ namespace TCP_Server_Csharp_
         private TCPListner sListner;
         private Thread sThreadTCP;
         private Thread sThreadUDP;
+        private Thread mThread;
         private int queryLength;
-        private int nclient = 0;
         private UDPSocket udpSocket;
 
         public Server(string hostNameOrAdress, int tcpPort, int qlength, int udpPort)
         {
             queryLength = qlength;
             sListner = new TCPListner(hostNameOrAdress, tcpPort);      //инициализация прослушивателя
-            sThreadTCP = new Thread(new ThreadStart(ServerStartTCP));     //запуск сервера в отдельном потоке
-            sThreadTCP.Start();
+            
+            
+ //           sThreadTCP = new Thread(new ThreadStart(ServerStartTCP));     //запуск сервера в отдельном потоке
+ //           sThreadTCP.Start();
             
             udpSocket = new UDPSocket(hostNameOrAdress, udpPort);
             udpSocket.Bind();
             udpSocket.SetReciveTimeOut(-1);
-            sThreadUDP = new Thread(new ThreadStart(ServerStartUDP));
-            sThreadUDP.Start();
+
+
+//            sThreadUDP = new Thread(new ThreadStart(ServerStartUDP));
+//            sThreadUDP.Start();
+
+            mThread = new Thread(new ThreadStart(MultiplexServerInputChecker));
+            mThread.Start();
 
         }
 
         public void Close()
         {
-            sListner.Stop();
-            sThreadTCP.Abort();
-            udpSocket.Close();
-            sThreadUDP.Abort();
+            try
+            {
+                sListner.Stop();
+                sThreadTCP.Abort();
+                udpSocket.Close();
+                sThreadUDP.Abort();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
+
+        private void MultiplexServerInputChecker()
+        {
+            List<Socket> serverSockets = new List<Socket>();
+
+            serverSockets.Add(sListner.GetSocket());
+            serverSockets.Add(udpSocket.Socket);
+            while (true)
+            {
+                Socket.Select(serverSockets, null, null, -1);
+                foreach (Socket item in serverSockets)
+                {
+                    if (item == sListner.GetSocket())
+                    {
+                        Socket clientSocket = sListner.AcceptSocket();             //получаем сокет клиента
+                        TCPSocketClient socketClient = new TCPSocketClient();
+                        socketClient.Initialization(clientSocket);
+
+                        Thread clientThread = new Thread(ClientService);    //запускаем отдельный поток для обслуживания клиента
+                        clientThread.Start(socketClient);
+                    }
+                    if (item == udpSocket.Socket)
+                    {
+                        int bytesRec;
+                        byte[] bytes = new byte[1024];
+                        EndPoint remoteEP = new IPEndPoint(IPAddress.Any, 0);
+
+                        bytesRec = udpSocket.Socket.ReceiveFrom(bytes, ref remoteEP);
+                        //udpSocket.Socket.SendTo(Encoding.UTF8.GetBytes("ASK"), remoteEP);
+                        //Console.WriteLine(Encoding.UTF8.GetString(bytes));
+                        Console.WriteLine("Remote EP: " + remoteEP);
+                        Thread clientThread = new Thread(UDPClientService);    //запускаем отдельный поток для обслуживания клиента
+                        clientThread.Start(remoteEP);                        
+                    }
+                }
+            }
+        }
+
 
         private void ServerStartTCP()                      //метод-поток для обслуживания очереди подключений
         {
@@ -52,11 +104,9 @@ namespace TCP_Server_Csharp_
 
             while (true)
             {
-                Console.WriteLine("Client number \n" + nclient);
                 clientSocket = sListner.AcceptSocket();             //получаем сокет клиента
                 TCPSocketClient socketClient = new TCPSocketClient();
                 socketClient.Initialization(clientSocket);
-                nclient++;
 
                 Thread clientThread = new Thread(ClientService);    //запускаем отдельный поток для обслуживания клиента
                 clientThread.Start(socketClient);
@@ -95,10 +145,9 @@ namespace TCP_Server_Csharp_
 
         private void UDPClientService(object targetEP)
         {
-            Console.WriteLine("Hello");
             UDPSocket clientSocket = new UDPSocket(udpSocket.GetIpEndPoint().Address.ToString(), 0);
             clientSocket.Bind();
-            clientSocket.SetReciveTimeOut(5000);
+            clientSocket.SetReciveTimeOut(1000);
             clientSocket.Socket.SendTo(Encoding.UTF8.GetBytes("ASK"), (IPEndPoint)targetEP);
 
             Console.WriteLine(clientSocket.GetIpEndPoint().ToString());
@@ -132,12 +181,14 @@ namespace TCP_Server_Csharp_
                 catch(Exception ex)
                 {
                     Console.WriteLine(ex.Message);
-                    cSocket.Close();
-                    nclient--;                    
+                    cSocket.Close();                   
                 }
-                
-                cSocket.Write(BitConverter.GetBytes(fs.Position));                   //2) отправляем позицию в файле с которой нужно отправлять данные
-               
+
+                if (cSocket.Write(BitConverter.GetBytes(fs.Position)) == 0)                   //2) отправляем позицию в файле с которой нужно отправлять данные
+                {
+                    cSocket.Close();
+                    return;
+                }
                 Console.WriteLine(fs.Position);
 
                 while ((bytesRec = cSocket.Read(bytes)) != 0)
@@ -155,7 +206,6 @@ namespace TCP_Server_Csharp_
             }
                 
             cSocket.Close();                
-            nclient--;
         }
     }
 }

@@ -41,5 +41,9 @@ namespace TCP_Server_Csharp_
             return ipEndPoint;
         }
 
+        public Socket GetSocket()
+        {
+            return serverListner;
+        }
     }
 }

@@ -85,7 +85,11 @@ namespace TCPClient_Csharp_
             {
                 fs = new FileStream(fileName, FileMode.Open, FileAccess.Read);
 
-                socketClient.Write(Encoding.UTF8.GetBytes(fileName));
+                bytesRec = socketClient.Write(Encoding.UTF8.GetBytes(fileName));
+                if (bytesRec == 0)
+                {
+                    throw new Exception("File name can't send"); 
+                }
 
                 Console.WriteLine(((UDPSocketClient)socketClient).RemoteEndPoint);
 
@@ -100,11 +104,15 @@ namespace TCPClient_Csharp_
 
                     while (fs.Position != fs.Length)
                     {
-  //                      Console.WriteLine(fs.Position);
+                        //                      Console.WriteLine(fs.Position);
                         int realRead = fs.Read(bytes, 0, bytes.Length);
                         byte[] msg = new byte[realRead];
                         msg = bytes.Take(realRead).ToArray();
-                        socketClient.Write(msg);
+                        bytesRec = socketClient.Write(msg);
+                        if (bytesRec == 0)
+                        {
+                            throw new Exception("Connection lost");
+                        }
                     }
 
                 }
