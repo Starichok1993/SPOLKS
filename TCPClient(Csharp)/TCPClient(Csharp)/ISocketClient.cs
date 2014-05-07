@@ -13,7 +13,7 @@ namespace TCP_Server_Csharp_
         void Connect(IPEndPoint remoteEP);
         void Initialization(Socket client);
         int Read(byte[] buffer);
-        int Write(byte[] msg);
+        int Write(byte[] msg, SocketFlags fl);
         void Close();
     }
 }

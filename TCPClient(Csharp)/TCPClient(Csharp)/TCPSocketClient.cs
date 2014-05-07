@@ -21,6 +21,18 @@ namespace TCP_Server_Csharp_
         {
             try
             {
+                if (cSocket.Poll(1, SelectMode.SelectError))
+                {
+                    try
+                    {
+                        cSocket.Receive(buff, SocketFlags.OutOfBand);
+                    }
+                    catch(Exception ex)
+                    {
+                        throw ex;
+                    }
+                    return -1;
+                }
                 return cSocket.Receive(buff);
             }
             catch (Exception ex)
@@ -30,11 +42,11 @@ namespace TCP_Server_Csharp_
             }
         }
 
-        public int Write(byte[] msg)
+        public int Write(byte[] msg, SocketFlags fl = SocketFlags.None)
         {
             try
             {
-                cSocket.Send(msg);
+                cSocket.Send(msg, fl);
                 return 1;
             }
             catch (Exception ex)
@@ -52,7 +64,15 @@ namespace TCP_Server_Csharp_
 
         public void Connect(System.Net.IPEndPoint remoteEP)
         {
-            cSocket.Connect(remoteEP);
+            try
+            {
+                cSocket.Connect(remoteEP);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                throw ex;
+            }
         }
     }
 }

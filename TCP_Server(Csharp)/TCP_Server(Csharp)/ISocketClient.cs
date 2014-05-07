@@ -10,7 +10,7 @@ namespace TCP_Server_Csharp_
     public interface ISocketClient
     {
         int Read(byte[] buffer);
-        int Write(byte[] msg);
+        int Write(byte[] msg, SocketFlags fl);
         void Close();
     }
 }

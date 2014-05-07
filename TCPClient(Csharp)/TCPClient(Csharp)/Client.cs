@@ -17,8 +17,21 @@ namespace TCPClient_Csharp_
         private ISocketClient socketClient;
         private IPEndPoint remoteIpEndPoint;
 
-        public void Initialization(string hostNameOrAdress, int port, int socketType = 0) //SocketType 0-TCP, else-UDP
+        private bool keyPressed;
+
+        public Client()
         {
+            keyPressed = false;
+            Console.CancelKeyPress += new ConsoleCancelEventHandler(KeyMonitor);
+        }
+
+        private void KeyMonitor(object sender, System.EventArgs e)
+        {
+            keyPressed = true;
+        }
+
+        public void Initialization(string hostNameOrAdress, int port, int socketType = 0) //SocketType 0-TCP, else-UDP
+        {        
             IPAddress ipAddr = Dns.Resolve(hostNameOrAdress).AddressList[0];
             remoteIpEndPoint = new IPEndPoint(ipAddr, port);
 
@@ -51,7 +64,7 @@ namespace TCPClient_Csharp_
            // socketClient.Read
 
 
-            if (socketClient.Write(Encoding.UTF8.GetBytes("Connet me")) == 0)
+            if (socketClient.Write(Encoding.UTF8.GetBytes("Connet me"), SocketFlags.None) == 0)
             {
                 return;
             }
@@ -85,13 +98,13 @@ namespace TCPClient_Csharp_
             {
                 fs = new FileStream(fileName, FileMode.Open, FileAccess.Read);
 
-                bytesRec = socketClient.Write(Encoding.UTF8.GetBytes(fileName));
+                bytesRec = socketClient.Write(Encoding.UTF8.GetBytes(fileName), SocketFlags.None);
                 if (bytesRec == 0)
                 {
                     throw new Exception("File name can't send"); 
                 }
 
-                Console.WriteLine(((UDPSocketClient)socketClient).RemoteEndPoint);
+                //Console.WriteLine(((UDPSocketClient)socketClient).RemoteEndPoint);
 
                 bytesRec = socketClient.Read(bytes);
 
@@ -104,14 +117,30 @@ namespace TCPClient_Csharp_
 
                     while (fs.Position != fs.Length)
                     {
-                        //                      Console.WriteLine(fs.Position);
+                        Console.WriteLine(fs.Position);
                         int realRead = fs.Read(bytes, 0, bytes.Length);
                         byte[] msg = new byte[realRead];
                         msg = bytes.Take(realRead).ToArray();
-                        bytesRec = socketClient.Write(msg);
+                        bytesRec = socketClient.Write(msg, SocketFlags.None);
+
+
+
+                        if (bytesRec == -1)
+                        {
+                            Console.WriteLine(Encoding.UTF8.GetString(msg, 0, bytesRec));
+                        }
                         if (bytesRec == 0)
                         {
                             throw new Exception("Connection lost");
+                        }
+                        if (Console.KeyAvailable)
+                        {
+                            ConsoleKeyInfo cki = Console.ReadKey(true);
+                            if (cki.Key == ConsoleKey.X)
+                            {
+                                byte[] oob = new byte[1];
+                                socketClient.Write(oob, SocketFlags.OutOfBand);
+                            }
                         }
                     }
 

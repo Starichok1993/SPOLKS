@@ -69,7 +69,7 @@ namespace TCP_Server_Csharp_
 
         }
 
-        public int Write(byte[] msg)
+        public int Write(byte[] msg, SocketFlags fl = SocketFlags.None)
         {
             byte[] package = new byte[msg.Length + 1];
             package[0] = packageNumberWrite;

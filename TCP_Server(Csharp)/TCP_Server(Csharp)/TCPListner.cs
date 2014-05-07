@@ -14,14 +14,17 @@ namespace TCP_Server_Csharp_
         private IPEndPoint ipEndPoint;
 
         public TCPListner(string hostNameOrAdress, int port)
-        {            
+        {    
+            int z[];
             IPAddress ipAddr = Dns.Resolve(hostNameOrAdress).AddressList[0];
             ipEndPoint = new IPEndPoint(ipAddr, port);
             serverListner = new Socket(ipAddr.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
         }
-
+        
         public void Start(int backlog)
         {
+//            serverListner.ReceiveTimeout = 1;
+//            serverListner.SendTimeout = 1;
             serverListner.Bind(ipEndPoint);
             serverListner.Listen(backlog);
         }

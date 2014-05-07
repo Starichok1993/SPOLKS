@@ -23,6 +23,7 @@ namespace TCP_Server_Csharp_
         {
             queryLength = qlength;
             sListner = new TCPListner(hostNameOrAdress, tcpPort);      //инициализация прослушивателя
+            sListner.Start(qlength);
             
             
  //           sThreadTCP = new Thread(new ThreadStart(ServerStartTCP));     //запуск сервера в отдельном потоке
@@ -184,7 +185,7 @@ namespace TCP_Server_Csharp_
                     cSocket.Close();                   
                 }
 
-                if (cSocket.Write(BitConverter.GetBytes(fs.Position)) == 0)                   //2) отправляем позицию в файле с которой нужно отправлять данные
+                if (cSocket.Write(BitConverter.GetBytes(fs.Position), SocketFlags.None) == 0)                   //2) отправляем позицию в файле с которой нужно отправлять данные
                 {
                     cSocket.Close();
                     return;
@@ -193,6 +194,12 @@ namespace TCP_Server_Csharp_
 
                 while ((bytesRec = cSocket.Read(bytes)) != 0)
                 {
+                    if (bytesRec == -1)
+                    {
+                        cSocket.Write(Encoding.UTF8.GetBytes("Hello user!"), SocketFlags.OutOfBand);
+                        continue;
+                    }
+
                     byte[] msg = bytes.Take(bytesRec).ToArray();
  //                   Console.WriteLine(fs.Position);
                     fs.Write(msg, 0, msg.Length);
