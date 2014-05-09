@@ -80,7 +80,7 @@ namespace MPIMatrixMultiplication
             Console.WriteLine("Result matrix:");
             MatrixService.PrintMatrix(matrixC);
 
-            Console.WriteLine("Computing time: " + (stop - start));
+            Console.WriteLine("Computing time: {0} ms", (stop - start).Milliseconds);
         }
 
         private void GatherResults(int numberOfSlaves)
@@ -90,13 +90,16 @@ namespace MPIMatrixMultiplication
 
             for (int source = 1; source <= numberOfSlaves; source++)
             {
-                int rowOffset = com.Receive<int>(source, messageType);
-                int rows = com.Receive<int>(source, messageType);
-                var temp = com.Receive<double[][]>(source, messageType);
-                Console.Write("Recive from {0}-worker {1} rows. Time:{2}\n", source, rows, DateTime.Now.ToString("hh:mm:ss.ffff"));
-                for (var j = 0; j < rows; j++)
+                var rowOffset = com.ImmediateReceive<int>(source, messageType);
+                rowOffset.Wait();
+                var rows = com.ImmediateReceive<int>(source, messageType);
+                rows.Wait();
+                var temp = com.ImmediateReceive<double[][]>(source, messageType);
+                temp.Wait();
+                Console.Write("Recive from {0}-worker {1} rows. Time:{2}\n", source, (int)rows.GetValue(), DateTime.Now.ToString("hh:mm:ss.ffff"));
+                for (var j = 0; j < (int)rows.GetValue(); j++)
                 {
-                    matrixC[rowOffset + j] = temp[j];
+                    matrixC[(int)rowOffset.GetValue() + j] = ((double[][])temp.GetValue())[j];
                 }
             }
         }
@@ -114,8 +117,10 @@ namespace MPIMatrixMultiplication
                 int rows = (destination <= remainingRows) ? rowsPerWorker + 1 : rowsPerWorker;
                 Console.WriteLine("Sending {0} rows from offset {1} to task {2}", rows, offsetRow, destination);
                 
-                com.Send(offsetRow, destination, messageType);
-                com.Send(rows, destination, messageType);
+                var req = com.ImmediateSend(offsetRow, destination, messageType);
+                req.Wait();
+                req = com.ImmediateSend(rows, destination, messageType);
+                req.Wait();
 
                 double[][] temp = new double[rows][];
                 for (int i = 0; i < rows; i++)
@@ -123,8 +128,10 @@ namespace MPIMatrixMultiplication
                     temp[i] = matrixA[i];
                 }
 
-                com.Send(temp, destination, messageType);
-                com.Send(matrixB, destination, messageType);
+                req = com.ImmediateSend(temp, destination, messageType);
+                req.Wait();
+                req = com.ImmediateSend(matrixB, destination, messageType);
+                req.Wait();
 
                 offsetRow += rows;
             }
@@ -134,17 +141,23 @@ namespace MPIMatrixMultiplication
         {
             var com = Communicator.world;
             int messageType = FROM_MASTER;
-            int sourse = 0;
+            int source = 0;
 
-            int offsetRow = com.Receive<int>(sourse, messageType);
-            int rows = com.Receive<int>(sourse, messageType);
-            var  mA = com.Receive<double[][]>(sourse, messageType);
-            var mB = com.Receive<double[][]>(sourse, messageType);
-            var mC = MatrixService.MultiplyMatrix(mA, mB);
+            var offsetRow = com.ImmediateReceive<int>(source, messageType);
+            offsetRow.Wait();
+            var rows = com.ImmediateReceive<int>(source, messageType);
+            rows.Wait();
+            var mA = com.ImmediateReceive<double[][]>(source, messageType);
+            mA.Wait();
+            var mB = com.ImmediateReceive<double[][]>(source, messageType);
+            mB.Wait();
+            var mC = MatrixService.MultiplyMatrix((double[][])mA.GetValue(), (double[][])mB.GetValue());
 
-            com.Send(offsetRow, sourse, FROM_WORKER);
-            com.Send(rows, sourse, FROM_WORKER);
-            com.Send(mC, sourse, FROM_WORKER);
+            var req = com.ImmediateSend((int)offsetRow.GetValue(), source, FROM_WORKER);
+            req.Wait();
+            req = com.ImmediateSend((int)rows.GetValue(), source, FROM_WORKER);
+            req.Wait();
+            com.ImmediateSend(mC, source, FROM_WORKER);
         }
 
     }
