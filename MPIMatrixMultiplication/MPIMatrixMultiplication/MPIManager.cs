@@ -11,8 +11,15 @@ namespace MPIMatrixMultiplication
     
     public class MPIManager
     {
-        const int FROM_MASTER = 1;
-        const int FROM_WORKER = 2;
+        private const int FROM_MASTER = 1;
+        private const int FROM_WORKER = 2;
+        private const int FROM_MASTER_OFFSET_ROWS = 3;
+        private const int FROM_MASTER_ROWS = 4;
+        private const int FROM_MASTER_DATA = 5;
+        private const int FROM_MASTER_MATRIX_B = 6;
+        private const int FROM_WORKER_OFFSET_ROWS = 7;
+        private const int FROM_WORKER_ROWS = 8;
+        private const int FROM_WORKER_RESULT = 9;
 
         private readonly int _rowsA;
         private readonly int _columnsA;
@@ -62,6 +69,9 @@ namespace MPIMatrixMultiplication
         private void StartMaster()
         {
             var com = Communicator.world;
+            //int[] ranks = {1, 2};
+            //var newGroup = com.Group.IncludeOnly(ranks);
+
             int numberOfSlaves = com.Size - 1;
 
             Console.WriteLine("Number of worker tasks = " + numberOfSlaves);
@@ -86,16 +96,18 @@ namespace MPIMatrixMultiplication
         private void GatherResults(int numberOfSlaves)
         {
             var com = Communicator.world;
-            int messageType = FROM_WORKER;
+            //int messageType = FROM_WORKER;
 
             for (int source = 1; source <= numberOfSlaves; source++)
             {
-                var rowOffset = com.ImmediateReceive<int>(source, messageType);
+                var rowOffset = com.ImmediateReceive<int>(source, FROM_WORKER_OFFSET_ROWS);
+                var rows = com.ImmediateReceive<int>(source, FROM_WORKER_ROWS);
+                var temp = com.ImmediateReceive<double[][]>(source, FROM_WORKER_RESULT);
+                
                 rowOffset.Wait();
-                var rows = com.ImmediateReceive<int>(source, messageType);
                 rows.Wait();
-                var temp = com.ImmediateReceive<double[][]>(source, messageType);
                 temp.Wait();
+                
                 Console.Write("Recive from {0}-worker {1} rows. Time:{2}\n", source, (int)rows.GetValue(), DateTime.Now.ToString("hh:mm:ss.ffff"));
                 for (var j = 0; j < (int)rows.GetValue(); j++)
                 {
@@ -110,28 +122,28 @@ namespace MPIMatrixMultiplication
             int rowsPerWorker = matrixA.Length / numberOfSlaves;
             int remainingRows = matrixA.Length % numberOfSlaves;
             int offsetRow = 0;
-            int messageType = FROM_MASTER;
 
             for (int destination = 1; destination <= numberOfSlaves; destination++)
             {
                 int rows = (destination <= remainingRows) ? rowsPerWorker + 1 : rowsPerWorker;
                 Console.WriteLine("Sending {0} rows from offset {1} to task {2}", rows, offsetRow, destination);
                 
-                var req = com.ImmediateSend(offsetRow, destination, messageType);
-                req.Wait();
-                req = com.ImmediateSend(rows, destination, messageType);
-                req.Wait();
-
+                var reqOffsetRow = com.ImmediateSend(offsetRow, destination, FROM_MASTER_OFFSET_ROWS);
+                var reqRows = com.ImmediateSend(rows, destination, FROM_MASTER_ROWS);
+                
                 double[][] temp = new double[rows][];
                 for (int i = 0; i < rows; i++)
                 {
                     temp[i] = matrixA[i];
                 }
 
-                req = com.ImmediateSend(temp, destination, messageType);
-                req.Wait();
-                req = com.ImmediateSend(matrixB, destination, messageType);
-                req.Wait();
+                var reqData = com.ImmediateSend(temp, destination, FROM_MASTER_DATA);
+                var reqMatrixB = com.ImmediateSend(matrixB, destination, FROM_MASTER_MATRIX_B);
+
+                reqOffsetRow.Wait();
+                reqRows.Wait();
+                reqData.Wait();
+                reqMatrixB.Wait();
 
                 offsetRow += rows;
             }
@@ -140,24 +152,27 @@ namespace MPIMatrixMultiplication
         private void StartSlave()
         {
             var com = Communicator.world;
-            int messageType = FROM_MASTER;
             int source = 0;
 
-            var offsetRow = com.ImmediateReceive<int>(source, messageType);
+            var offsetRow = com.ImmediateReceive<int>(source, FROM_MASTER_OFFSET_ROWS);
+            var rows = com.ImmediateReceive<int>(source, FROM_MASTER_ROWS);
+            var mA = com.ImmediateReceive<double[][]>(source, FROM_MASTER_DATA);
+            var mB = com.ImmediateReceive<double[][]>(source, FROM_MASTER_MATRIX_B);
+           
             offsetRow.Wait();
-            var rows = com.ImmediateReceive<int>(source, messageType);
             rows.Wait();
-            var mA = com.ImmediateReceive<double[][]>(source, messageType);
             mA.Wait();
-            var mB = com.ImmediateReceive<double[][]>(source, messageType);
             mB.Wait();
+            
             var mC = MatrixService.MultiplyMatrix((double[][])mA.GetValue(), (double[][])mB.GetValue());
 
-            var req = com.ImmediateSend((int)offsetRow.GetValue(), source, FROM_WORKER);
-            req.Wait();
-            req = com.ImmediateSend((int)rows.GetValue(), source, FROM_WORKER);
-            req.Wait();
-            com.ImmediateSend(mC, source, FROM_WORKER);
+            var reqOffsetRow = com.ImmediateSend((int)offsetRow.GetValue(), source, FROM_WORKER_OFFSET_ROWS);
+            var reqRows = com.ImmediateSend((int)rows.GetValue(), source, FROM_WORKER_ROWS);
+            var reqResult = com.ImmediateSend(mC, source, FROM_WORKER_RESULT);
+
+            reqOffsetRow.Wait();
+            reqRows.Wait();
+            reqResult.Wait();
         }
 
     }
