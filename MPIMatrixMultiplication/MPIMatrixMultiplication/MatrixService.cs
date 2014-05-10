@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -104,6 +105,51 @@ namespace MPIMatrixMultiplication
                     data[i][j] = random.NextDouble();
                 }
             }
+        }
+
+        public static double[][] ReadMatrix(string fileName)
+        {
+            var file = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var buffer = new byte[sizeof(int)];
+            file.Read(buffer, 0, sizeof (int));
+            var rowsCount = BitConverter.ToInt32(buffer, 0);
+            file.Read(buffer, 0, sizeof (int));
+            var columnsCount = BitConverter.ToInt32(buffer, 0);
+
+            buffer = new byte[sizeof(double)];
+            double[][] result;
+            CreateMatrix(out result, rowsCount, columnsCount);
+
+            for (int i = 0; i < rowsCount; i++)
+            {
+                for (int j = 0; j < columnsCount; j++)
+                {
+                    file.Read(buffer, 0, sizeof (double));
+                    result[i][j] = BitConverter.ToDouble(buffer, 0);
+                }
+            }
+
+            return result;
+        }
+
+        public static void WriteMatrix(string fileName, double[][] matrix, int offsetRows)
+        {
+            var rowsCount = matrix.Length;
+            var columnsCount = matrix[0].Length;
+
+            var startOffset = sizeof (int) * 2;
+            var file = new FileStream(fileName, FileMode.Open, FileAccess.Write, FileShare.Write);
+
+            file.Seek(startOffset + (sizeof(double)) * ((offsetRows) * columnsCount), SeekOrigin.Begin);
+            for (int i = 0; i < rowsCount; i++)
+            {
+                for (int j = 0; j < columnsCount; j++)
+                {
+                    file.Write(BitConverter.GetBytes(matrix[i][j]), 0, sizeof(double));
+                }
+            }
+
+            file.Close();
         }
     }
 }
