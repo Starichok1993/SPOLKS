@@ -52,7 +52,7 @@ void pinger()
 
 	icmp->icmp_type = ICMP_ECHO;
 	icmp->icmp_code = 0;
-	icmp->icmp_id = pid;
+	icmp->icmp_id = htons(pid);
 	icmp->icmp_seq = nsent++;
 	gettimeofday((struct timeval *) icmp->icmp_data, NULL);
 	icmplen = 8 + 56;
@@ -88,7 +88,7 @@ void output(char *ptr, int len, struct timeval *tvrecv)
 
 	if(icmp->icmp_type == ICMP_ECHOREPLY)
 	{
-		if(icmp->icmp_id != pid)
+		if(ntohs(icmp->icmp_id) != pid)
 		{
 			return;
 		}

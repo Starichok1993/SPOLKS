@@ -14,15 +14,55 @@ namespace MulticastChat
         private UdpClient udpClient;
         public IPEndPoint MulticastIpEndPoint { get; private set; }
         public IPEndPoint HostIpEndPoint { get; private set; }
-        public int Port { get; private set;}
+        public int Port { get; private set; }
 
         public MulticastClient(string multicastGroup, int port)
         {
-            udpClient = new UdpClient(IPAddress.Parse(multicastGroup), port);
+            udpClient = new UdpClient(port);
+            udpClient.SubscribeToGroup(IPAddress.Parse(multicastGroup));
             MulticastIpEndPoint = new IPEndPoint(IPAddress.Parse(multicastGroup), port);
-            HostIpEndPoint = new IPEndPoint(IPAddress.Any, port);
+
+
+            foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (networkInterface.OperationalStatus == OperationalStatus.Up &&
+                    networkInterface.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                {
+                    var properties = networkInterface.GetIPProperties();
+                    var addresses = properties.UnicastAddresses;
+                    foreach (var address in addresses)
+                    {
+                        if (address.Address.AddressFamily == AddressFamily.InterNetwork)
+                        {
+                            HostIpEndPoint = new IPEndPoint(address.Address, port);
+                        }
+                    }
+                }
+            }
+
             Port = port;
         }
+
+        public void Subscribe(IPAddress ipAddress)
+        {
+            udpClient.SubscribeToGroup(ipAddress);
+        }
+
+        public void UnSubscribe(IPAddress ipAddress)
+        {
+            udpClient.UnSubscribeToGroup(ipAddress);
+        }
+
+        public void OffLoopbackMessage()
+        {
+            udpClient.OffLoopbackMessage();
+        }
+
+        public void OnLoopbackMessage()
+        {
+            udpClient.OnLoopbackMessage();
+        }
+
 
         public void Send(string message)
         {
@@ -39,7 +79,12 @@ namespace MulticastChat
                 {
                     if (message == "--ping")
                     {
-                        udpClient.Send("", senderIpEndPoint);
+                        udpClient.Send("--echo", senderIpEndPoint);
+                        continue;
+                    }
+                    if (message == "--echo")
+                    {
+                        Console.WriteLine("User online: " + senderIpEndPoint.Address);
                         continue;
                     }
                     Console.WriteLine(senderIpEndPoint.Address + ":" + message);

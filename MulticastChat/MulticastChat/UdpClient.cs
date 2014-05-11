@@ -14,26 +14,47 @@ namespace MulticastChat
         protected object sync = new object();
         private readonly int _port;
 
-        public UdpClient(IPAddress multicastGroup, int port)
+        public UdpClient(int port)
         {
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, 1);
 
-            var mcastOption = new MulticastOption(multicastGroup, IPAddress.Any);
-
-            socket.SetSocketOption(SocketOptionLevel.IP,
-                                        SocketOptionName.AddMembership,
-                                        mcastOption);
-            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastTimeToLive, 4);
             _port = port;
             socket.Bind(new IPEndPoint(IPAddress.Any, _port));
+        }
+
+        public void SubscribeToGroup(IPAddress groupIpAddress)
+        {
+
+            var mcastOption = new MulticastOption(groupIpAddress);
+            socket.SetSocketOption(SocketOptionLevel.IP,
+                            SocketOptionName.AddMembership,
+                            mcastOption);
+            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastTimeToLive, 4);
+        }
+
+        public void UnSubscribeToGroup(IPAddress groupIpAddress)
+        {
+            var mcastOption = new MulticastOption(groupIpAddress);
+
+            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.DropMembership, mcastOption);
+        }
+
+        public void OffLoopbackMessage()
+        {
+            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastLoopback, 0);
+        }
+
+        public void OnLoopbackMessage()
+        {
+            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastLoopback, 1);
         }
 
         public int Send(string message, IPEndPoint destinationIp)
         {
             lock (sync)
             {
-                return socket.SendTo(System.Text.Encoding.ASCII.GetBytes(message), destinationIp);
+                return socket.SendTo(Encoding.ASCII.GetBytes(message), destinationIp);
             }
         }
 

@@ -12,7 +12,7 @@ namespace MPIMatrixMultiplication
 
         private static void Main(string[] args)
         {
-            var manager = new MPIManager(5, 7, 3);
+            var manager = new MPIManager(10, 10, 10);
             manager.Start(ref args);
         }
     }

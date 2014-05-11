@@ -15,6 +15,7 @@ namespace BroadcastChat
             var broadcastClient = new BroadcastClient(33333);
             var listner = new Thread(broadcastClient.Listen);
             listner.Start();
+            Console.WriteLine("My ip: " + broadcastClient.HostIpEndPoint.Address);
             Console.WriteLine("\"--exit\" for exit; \"--ping\" for check online user");
             while (true)
             {

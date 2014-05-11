@@ -46,7 +46,7 @@ namespace MPIMatrixMultiplication
         {
             var rowsCount = matrixC.Length;
             var columnsCount = matrixC[0].Length;
-            var file = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write);
+            var file = new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.Write);
             if (file.Length == 0)
             {
                 file.Write(BitConverter.GetBytes(rowsCount), 0, sizeof(int));
@@ -90,7 +90,7 @@ namespace MPIMatrixMultiplication
                     {
                         if (Communicator.world.Rank == 0)
                         {
-                            newGroupSize = random.Next(2, remainingProcessor - (groupCount - i - 1)*2);
+                            newGroupSize = random.Next(2, remainingProcessor - (groupCount - i - 1) * 2);
                         }
 
                         Communicator.world.Broadcast(ref newGroupSize, 0);
@@ -189,6 +189,7 @@ namespace MPIMatrixMultiplication
             int messageType = FROM_MASTER;
 
             ((Intracommunicator)communicator).Broadcast<double[][]>(ref matrixB, 0);
+
             for (int destination = 1; destination <= numberOfSlaves; destination++)
             {
                 int rows = (destination <= remainingRows) ? rowsPerWorker + 1 : rowsPerWorker;
@@ -212,7 +213,6 @@ namespace MPIMatrixMultiplication
 
         private void StartSlave(Communicator communicator, int identity)
         {
-            //var com = Communicator.world;
             int messageType = FROM_MASTER;
             int sourse = 0;
 
@@ -231,7 +231,6 @@ namespace MPIMatrixMultiplication
             communicator.Send(offsetRow, sourse, FROM_WORKER);
             communicator.Send(rows, sourse, FROM_WORKER);
             communicator.Send(mC, sourse, FROM_WORKER);
-            
         }
 
     }

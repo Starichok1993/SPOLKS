@@ -15,7 +15,6 @@ namespace BroadcastChat
         public IPEndPoint BroadcastIpEndPoint { get; private set; }
         public IPEndPoint HostIpEndPoint { get; private set; }
    
-
         public BroadcastClient(int port)
         {
             udpClient = new UdpClient(port);
@@ -33,7 +32,6 @@ namespace BroadcastChat
                         {
                             GetBroadcastIp(address, port);
                             HostIpEndPoint = new IPEndPoint(address.Address, port);
-                            
                         }
                     }
                 }
@@ -68,7 +66,12 @@ namespace BroadcastChat
                 {
                     if (message == "--ping")
                     {
-                        udpClient.Send("", senderIpEndPoint);
+                        udpClient.Send("--echo", senderIpEndPoint);
+                        continue;
+                    }
+                    if (message == "--echo")
+                    {
+                        Console.WriteLine("User online: " + senderIpEndPoint.Address);
                         continue;
                     }
                     Console.WriteLine(senderIpEndPoint.Address + ":" + message);
