@@ -99,6 +99,11 @@ void ShareTheTask(MPI_Comm communicator, int numberOfSlaves)
   int messageType = FROM_MASTER;
 
   printf("Remaining rows: %d\n", remainingRows);
+  
+  MPI_Bcast(&(matrixB.columnsCount), 1, MPI_INT, 0, communicator);
+  MPI_Bcast(&(matrixA.columnsCount), 1, MPI_INT, 0, communicator);
+  MPI_Bcast(matrixB.data, matrixB.columnsCount * matrixB.rowsCount, MPI_DOUBLE, 0, communicator);
+ 
   for (int destination = 1; destination <= numberOfSlaves; destination++)
   {
     int rows = (destination <= remainingRows) ? rowsPerWorker + 1 : rowsPerWorker;
@@ -107,7 +112,6 @@ void ShareTheTask(MPI_Comm communicator, int numberOfSlaves)
 
     MPI_Send( &offsetRow, 1, MPI_INT, destination, FROM_MASTER, communicator);
     MPI_Send( &rows, 1, MPI_INT, destination, FROM_MASTER, communicator);
-    MPI_Send( &(matrixA.columnsCount), 1, MPI_INT, destination, FROM_MASTER, communicator);
     
     double* temp = (double*) malloc(sizeof(double) * rows * matrixA.columnsCount);
     for (int i = 0; i < rows; i++)
@@ -119,8 +123,6 @@ void ShareTheTask(MPI_Comm communicator, int numberOfSlaves)
     }
     
     MPI_Send( temp, rows * matrixA.columnsCount, MPI_DOUBLE, destination, FROM_MASTER, communicator);
-    MPI_Send( &(matrixB.columnsCount), 1, MPI_INT, destination, FROM_MASTER, communicator);
-    MPI_Send( matrixB.data, matrixB.columnsCount * matrixB.rowsCount, MPI_DOUBLE, destination, FROM_MASTER, communicator);
 
     offsetRow += rows;
   }
@@ -154,6 +156,15 @@ void GatherResults(MPI_Comm communicator, int numberOfSlaves)
 void StartSlave(MPI_Comm communicator, int indentity)
 {
   MPI_Status status;
+  
+  int mAColumnsCount;
+  MPI_Bcast( &mAColumnsCount, 1, MPI_INT, 0, communicator);
+  
+  int mBColumnsCount;
+  MPI_Bcast(&mBColumnsCount, 1, MPI_INT, 0, communicator);
+
+  double* bufB = (double*) malloc(sizeof(double) * mAColumnsCount * mBColumnsCount);
+  MPI_Bcast(bufB, mAColumnsCount * mBColumnsCount, MPI_DOUBLE, 0, communicator);
 
   int offsetRow;
   MPI_Recv( &offsetRow, 1, MPI_INT, 0, FROM_MASTER, communicator, &status);
@@ -161,21 +172,11 @@ void StartSlave(MPI_Comm communicator, int indentity)
   int rows;
   MPI_Recv(&rows, 1, MPI_INT, 0, FROM_MASTER, communicator, &status);
 
-  int mAColumnsCount;
-  MPI_Recv(&mAColumnsCount, 1, MPI_INT, 0, FROM_MASTER, communicator, &status);
-
   double* bufA = (double*) malloc(sizeof(double) * rows * mAColumnsCount);
   MPI_Recv(bufA, rows * mAColumnsCount, MPI_DOUBLE, 0, FROM_MASTER, communicator, &status);
   
-  int mBColumnsCount;
-  MPI_Recv(&mBColumnsCount, 1, MPI_INT, 0, FROM_MASTER, communicator, &status);
-
-  double* bufB = (double*) malloc(sizeof(double) * mAColumnsCount * mBColumnsCount);
-  MPI_Recv( bufB, mAColumnsCount * mBColumnsCount, MPI_DOUBLE, 0, FROM_MASTER, communicator, &status);  
-
   matrixA = CreateMatrix(bufA, rows, mAColumnsCount);
   matrixB = CreateMatrix(bufB, mAColumnsCount, mBColumnsCount);
-  
   matrixC = MultiplyMatrix( matrixA, matrixB);
 
   MPI_Send( &offsetRow, 1, MPI_INT, 0, FROM_WORKER, communicator);
