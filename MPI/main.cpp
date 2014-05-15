@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <time.h>
 #include <mpi.h>
 
 
@@ -21,6 +22,8 @@ void RandomInitialization(Matrix* matrix);
 Matrix MultiplyMatrix(Matrix matrixA, Matrix matrixB);
 void DeleteMatrix(Matrix matrix);
 
+int Contain(int* mas, int length, int value);
+void StartGroup(MPI_Comm communicator, int indentity);
 void StartSlave(MPI_Comm communicator, int indentity);
 void StartMaster(MPI_Comm communicator, int indentity);
 void ShareTheTask(MPI_Comm communicator, int numberOfSlaves);
@@ -30,35 +33,102 @@ void Init();
 int main (int argc, char* argv[])
 {
   int errCode;
+  
+  if (argc < 2)
+  {
+    return errCode;
+  }
+
+  int groupCount = atoi(argv[1]);
 
   if ((errCode = MPI_Init(&argc, &argv)) != 0)
   {
     return errCode;
   }
 
-  int currentTaskId;
+  int processorCount;
+  
+  srand(time(NULL));
+  MPI_Comm_size(MPI_COMM_WORLD, &processorCount);
 
-  MPI_Comm_rank(MPI_COMM_WORLD, &currentTaskId);
-
-  if (currentTaskId == 0)
-  {    
-    Init();
-    StartMaster(MPI_COMM_WORLD, 0);
-
-    printf("-----------------------\n");
-    //PrintMatrix(matrixC);
-    
-    DeleteMatrix(matrixA);
-    DeleteMatrix(matrixB);
-    DeleteMatrix(matrixC);
-  }
-  if (currentTaskId > 0)
+  if (groupCount > processorCount / 2)
   {
-    StartSlave(MPI_COMM_WORLD, 0);
+    printf("Group more than processor, need more processor.\n");
+    return errCode;
+  }
+
+  int remainingProcessor = processorCount;
+  int* listRanks = (int*) malloc(sizeof(int) * processorCount); 
+  int** groups = (int**) malloc(sizeof(int*) * groupCount);
+  MPI_Group originGroup, newGroup;
+  MPI_Comm newComm;
+
+  MPI_Comm_group(MPI_COMM_WORLD, &originGroup);
+
+  int rank = 0;
+  for (int i = 0; i < groupCount; ++i)
+  {
+    int processRank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
+    int newGroupSize = 2;
+    
+    if(i == groupCount - 1)
+    {
+      newGroupSize = remainingProcessor;
+    }
+    else
+    {
+      if (processRank == 0)
+      {
+        int max =  remainingProcessor - (groupCount - i - 1)*2 - 2;
+        if (max != 0)
+        {
+          newGroupSize = 2 + rand() % max;
+        }        
+      }
+      
+      MPI_Bcast(&newGroupSize, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    }
+
+    remainingProcessor -= newGroupSize;
+    
+    groups[i] = (int*) malloc(newGroupSize * sizeof(int));
+    for(int j = 0; j < newGroupSize; j++)
+    {
+      groups[i][j] = rank++;
+    }
+
+    MPI_Group_incl(originGroup, newGroupSize, groups[i], &newGroup);
+    MPI_Comm_create(MPI_COMM_WORLD, newGroup, &newComm);
+
+    if(Contain(groups[i], newGroupSize, processRank))
+    {
+      StartGroup(newComm, i);
+    }
   }
 
   MPI_Finalize();
   return 0;
+}
+
+void StartGroup(MPI_Comm communicator, int indentity)
+{
+  int currentTaskId;
+  MPI_Comm_rank(communicator, &currentTaskId);
+
+  if (currentTaskId == 0)
+  {
+    Init();
+    StartMaster(communicator, indentity);
+  } 
+  if (currentTaskId > 0)
+  {
+    StartSlave(communicator, indentity);
+  }
+  
+  DeleteMatrix(matrixA);
+  DeleteMatrix(matrixB);
+  DeleteMatrix(matrixC);
 }
 
 void Init()
@@ -150,7 +220,6 @@ void GatherResults(MPI_Comm communicator, int numberOfSlaves)
       }
     }
   }
-
 }
 
 void StartSlave(MPI_Comm communicator, int indentity)
@@ -184,9 +253,17 @@ void StartSlave(MPI_Comm communicator, int indentity)
   MPI_Send( matrixC.data, matrixC.columnsCount * matrixC.rowsCount, MPI_DOUBLE, 0, FROM_WORKER, communicator);
 }
 
-
-
-
+int Contain(int* mas, int length, int value)
+{
+  for (int i = 0; i < length; i++)
+  {
+    if (mas[i] == value)
+    {
+      return 1;
+    }
+  }
+  return 0;
+}
 //Region Matrix Service
 
 Matrix CreateMatrix(double* data, int rowsCount, int columnsCount)
